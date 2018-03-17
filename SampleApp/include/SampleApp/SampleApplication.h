@@ -161,6 +161,8 @@ private:
 #ifdef KWD
     /// The Wakeword Detector which can wake up the client using audio input.
     std::unique_ptr<kwd::AbstractKeywordDetector> m_keywordDetector;
+    std::unique_ptr<kwd::AbstractKeywordDetector> m_nskeywordDetector;
+
 #endif
 };
 

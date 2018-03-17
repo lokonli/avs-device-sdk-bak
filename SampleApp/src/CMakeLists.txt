@@ -37,11 +37,11 @@ target_link_libraries(SampleApp
 
 if(KITTAI_KEY_WORD_DETECTOR)
     target_link_libraries(SampleApp 
-        KITTAI)
+        KITTAI NS)
 endif()
 
 if(SENSORY_KEY_WORD_DETECTOR)
-    target_link_libraries(SampleApp SENSORY)
+    target_link_libraries(SampleApp SENSORY NS)
 endif()
 
 if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
