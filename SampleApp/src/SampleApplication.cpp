@@ -30,6 +30,7 @@
 #include <ESP/DummyESPDataProvider.h>
 #endif
 
+#include <NS/NSKeyWordDetector.h>
 #include <AVSCommon/AVS/Initialization/AlexaClientSDKInit.h>
 #include <AVSCommon/Utils/Configuration/ConfigurationNode.h>
 #include <AVSCommon/Utils/LibcurlUtils/HTTPContentFetcherFactory.h>
@@ -482,6 +483,20 @@ bool SampleApplication::initialize(
         return false;
     }
 
+/*
+ *  Creating the buffer for the netsocket
+*/
+  auto nsbuffer = std::make_shared<alexaClientSDK::avsCommon::avs::AudioInputStream::Buffer>(bufferSize);
+    std::shared_ptr<alexaClientSDK::avsCommon::avs::AudioInputStream> nssharedDataStream =
+        alexaClientSDK::avsCommon::avs::AudioInputStream::create(nsbuffer, WORD_SIZE, MAX_READERS);
+
+    if (!nssharedDataStream) {
+        alexaClientSDK::sampleApp::ConsolePrinter::simplePrint("Failed to create shared data stream for NS!");
+        return false;
+    }
+
+
+
     alexaClientSDK::avsCommon::utils::AudioFormat compatibleAudioFormat;
     compatibleAudioFormat.sampleRateHz = SAMPLE_RATE_HZ;
     compatibleAudioFormat.sampleSizeInBits = WORD_SIZE * CHAR_BIT;
@@ -527,6 +542,8 @@ bool SampleApplication::initialize(
         alexaClientSDK::sampleApp::ConsolePrinter::simplePrint("Failed to create PortAudioMicrophoneWrapper!");
         return false;
     }
+ 
+   
 // Creating wake word audio provider, if necessary
 #ifdef KWD
     bool wakeAlwaysReadable = true;
@@ -585,13 +602,43 @@ bool SampleApplication::initialize(
     }
 #endif
 
+// Creating net socket audio provider
+    bool nsAlwaysReadable = false;
+    bool nsCanOverride = true;
+    bool nsCanBeOverridden = true;
+
+    alexaClientSDK::capabilityAgents::aip::AudioProvider nsAudioProvider(
+        nssharedDataStream,
+        compatibleAudioFormat,
+        alexaClientSDK::capabilityAgents::aip::ASRProfile::NEAR_FIELD,
+        nsAlwaysReadable,
+        nsCanOverride,
+        nsCanBeOverridden);
+
+    // This observer is notified any time a keyword is detected and notifies the DefaultClient to start recognizing.
+    auto nskeywordObserver = std::make_shared<alexaClientSDK::sampleApp::KeywordObserver>(client, nsAudioProvider);
+
+
+   m_nskeywordDetector = alexaClientSDK::kwd::NSKeyWordDetector::create(client,
+        nssharedDataStream,
+        compatibleAudioFormat,
+        {nskeywordObserver},
+        std::unordered_set<
+            std::shared_ptr<alexaClientSDK::avsCommon::sdkInterfaces::KeyWordDetectorStateObserverInterface>>());
+    if (!m_nskeywordDetector) {
+        alexaClientSDK::sampleApp::ConsolePrinter::simplePrint("Failed to create NSKeyWordDetector!");
+        return false;
+	}
+  
+
     // If wake word is enabled, then creating the interaction manager with a wake word audio provider.
     auto interactionManager = std::make_shared<alexaClientSDK::sampleApp::InteractionManager>(
         client,
         micWrapper,
         userInterfaceManager,
         holdToTalkAudioProvider,
-        tapToTalkAudioProvider,
+//        tapToTalkAudioProvider,
+	nsAudioProvider,
         wakeWordAudioProvider,
         espProvider,
         espModifier);
