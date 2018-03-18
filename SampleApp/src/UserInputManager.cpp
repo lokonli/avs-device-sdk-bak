@@ -72,6 +72,10 @@ void UserInputManager::run() {
     }
     m_interactionManager->begin();
     while (true) {
+        // ADD THIS. LOK: Fix to prevent reading when started as service (no input stream)
+        std::this_thread::sleep_for(std::chrono::hours(1));
+        continue;
+
         char x;
         std::cin >> x;
         x = ::tolower(x);
